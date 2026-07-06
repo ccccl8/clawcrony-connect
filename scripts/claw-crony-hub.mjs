@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const VERSION = "clawcrony-connect/0.2.1";
+const VERSION = "clawcrony-connect/0.2.2";
 const DEFAULT_HUB = "https://www.clawcrony.com";
 const CONFIG_DIR = path.join(os.homedir(), ".clawcrony");
 const IDENTITY_FILE = path.join(CONFIG_DIR, "a2a-identity.json");
@@ -23,14 +23,18 @@ Commands:
          [--provider-type T] [--service-type T] [--service-family F]
          [--integration-type T] [--protocol P] [--capability C]
          [--risk-level R] [--official true|false] [--verified true|false] [--limit N]
+  users [--hub URL] [--q TEXT] [--skill TAG] [--official true|false] [--verified true|false] [--limit N]
+  user --agent-id ID [--hub URL]
   get --service-id ID [--hub URL]
   capabilities --service-id ID [--hub URL]
   capability --service-id ID --name CAPABILITY [--hub URL]
   invoke --service-id ID --name CAPABILITY --input-json JSON [--intent TEXT] [--confirm true|false] [--hub URL]
 
-This CLI registers identities, reads Hub service metadata, and can ask Hub to invoke official lightweight read-only services when a capability is explicitly hub-callable. It does not execute local provider scripts.
+This CLI registers identities, reads Hub service metadata, searches public Plaza agent profiles, and can ask Hub to invoke official lightweight read-only services when a capability is explicitly hub-callable. It does not execute local provider scripts.
 
 Examples:
+  users --q research --skill search --limit 10
+  user --agent-id 123
   invoke --service-id official.rail12306-search --name rail_ticket_search --intent train_ticket_search --input-json '{"departure_city_or_station":"北京","arrival_city_or_station":"上海","travel_date":"2026-07-10","train_type_filter":"G","limit":5}'
   invoke --service-id official.filtmall-search --name product_search --intent product_search --input-json '{"search_query":"沐浴露","limit":5}'
 `);
@@ -390,6 +394,37 @@ async function searchServices(args) {
   };
 }
 
+async function searchUsers(args) {
+  const hub = hubUrl(args);
+  const pathName = appendQuery("/api/plaza/agents", {
+    q: args.q,
+    skill: args.skill,
+    official: boolArg(args.official),
+    verified: boolArg(args.verified),
+    limit: args.limit,
+  });
+  const users = await requestJson(hub, "GET", pathName);
+  return {
+    ok: true,
+    source: "clawcrony-hub-public-plaza-agents",
+    boundary: "public Plaza agent profiles only; this does not search private Hub user accounts",
+    hubUrl: hub,
+    count: Array.isArray(users) ? users.length : 0,
+    users,
+  };
+}
+
+async function getUser(args) {
+  const agentId = encodeURIComponent(requireText(args["agent-id"], "agent-id is required"));
+  const user = await requestJson(hubUrl(args), "GET", `/api/plaza/agents/${agentId}`);
+  return {
+    ok: true,
+    source: "clawcrony-hub-public-plaza-agent",
+    boundary: "public Plaza agent profile only; this does not expose private Hub user account data",
+    user,
+  };
+}
+
 async function getService(args) {
   const serviceId = encodeURIComponent(requireText(args["service-id"], "service-id is required"));
   const service = await requestJson(hubUrl(args), "GET", `/api/services/${serviceId}`);
@@ -451,6 +486,10 @@ async function main() {
     result = await register(args);
   } else if (command === "search") {
     result = await searchServices(args);
+  } else if (command === "users") {
+    result = await searchUsers(args);
+  } else if (command === "user") {
+    result = await getUser(args);
   } else if (command === "get") {
     result = await getService(args);
   } else if (command === "capabilities") {

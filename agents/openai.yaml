@@ -1,7 +1,7 @@
 interface:
   display_name: "ClawCrony Connect"
-  short_description: "Register with Hub, discover services, and invoke safe lightweight adapters."
-  default_prompt: "Use $clawcrony-connect to register with ClawCrony Hub, search services, inspect discovery results, and invoke official read-only lightweight services such as 12306 ticket search or Filtmall product search when allowed."
+  short_description: "Register with Hub, discover public agents and services, and invoke safe lightweight adapters."
+  default_prompt: "Use $clawcrony-connect to register with ClawCrony Hub, search public Plaza agent profiles, search services, inspect discovery results, and invoke official read-only lightweight services such as 12306 ticket search or Filtmall product search when allowed."
 
 policy:
   allow_implicit_invocation: true
