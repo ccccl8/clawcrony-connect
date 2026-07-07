@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const VERSION = "clawcrony-connect/0.2.2";
+const VERSION = "clawcrony-connect/0.2.3";
 const DEFAULT_HUB = "https://www.clawcrony.com";
 const CONFIG_DIR = path.join(os.homedir(), ".clawcrony");
 const IDENTITY_FILE = path.join(CONFIG_DIR, "a2a-identity.json");
@@ -19,6 +19,10 @@ Commands:
            [--username NAME --password PASSWORD] [--email EMAIL]
            [--web-url URL] [--skill-page-url URL] [--skill-download-url URL]
            [--openapi-url URL] [--mcp-url URL] [--custom-http-url URL] [--a2a-url URL]
+           [--publish-service true] [--service-title TEXT] [--service-summary TEXT]
+           [--service-category C] [--service-type T] [--service-family F]
+           [--delivery TEXT] [--pricing TEXT] [--contact-url URL]
+           [--terms-url URL] [--risk-boundary TEXT] [--availability TEXT]
   search [--hub URL] [--q TEXT] [--skill TAG] [--category C]
          [--provider-type T] [--service-type T] [--service-family F]
          [--integration-type T] [--protocol P] [--capability C]
@@ -35,6 +39,7 @@ This CLI registers identities, reads Hub service metadata, searches public Plaza
 Examples:
   users --q research --skill search --limit 10
   user --agent-id 123
+  register --name "Data Cleanup Service" --skills "spreadsheet,automation" --publish-service true --service-category productivity --delivery "contact first, then provider web link" --pricing "quote-based" --contact-url https://example.com/contact
   invoke --service-id official.rail12306-search --name rail_ticket_search --intent train_ticket_search --input-json '{"departure_city_or_station":"北京","arrival_city_or_station":"上海","travel_date":"2026-07-10","train_type_filter":"G","limit":5}'
   invoke --service-id official.filtmall-search --name product_search --intent product_search --input-json '{"search_query":"沐浴露","limit":5}'
 `);
@@ -224,11 +229,99 @@ function dedupeStrings(values) {
   return result;
 }
 
-function buildDescriptor(identity, args, skills) {
+function hasServicePublicationArgs(args) {
+  return [
+    "publish-service",
+    "service-title",
+    "service-summary",
+    "service-category",
+    "service-type",
+    "service-family",
+    "service-tags",
+    "delivery",
+    "pricing",
+    "contact-url",
+    "terms-url",
+    "risk-boundary",
+    "availability",
+    "documentation-url",
+  ].some((key) => args[key] !== undefined && args[key] !== false && String(args[key]).trim() !== "");
+}
+
+function addLine(lines, label, value) {
+  if (value === undefined || value === null) return;
+  const text = String(value).trim();
+  if (!text) return;
+  lines.push(`- ${label}: ${text}`);
+}
+
+function buildServicePublication(args, skills) {
+  if (!hasServicePublicationArgs(args)) return null;
+  const links = {
+    webUrl: args["web-url"],
+    skillPageUrl: args["skill-page-url"],
+    skillDownloadUrl: args["skill-download-url"],
+    openapiUrl: args["openapi-url"],
+    mcpUrl: args["mcp-url"],
+    customHttpUrl: args["custom-http-url"],
+    a2aUrl: args["a2a-url"],
+    documentationUrl: args["documentation-url"],
+    contactUrl: args["contact-url"],
+    termsUrl: args["terms-url"],
+  };
+  return {
+    serviceTitle: args["service-title"] || args.name,
+    serviceSummary: args["service-summary"] || args.description || "",
+    serviceCategory: args["service-category"],
+    serviceType: args["service-type"],
+    serviceFamily: args["service-family"],
+    serviceTags: dedupeStrings([...skills, ...splitList(args["service-tags"])]),
+    delivery: args.delivery || "Provider handoff; contact or follow the public links for deeper operations.",
+    pricing: args.pricing,
+    availability: args.availability,
+    riskBoundary: args["risk-boundary"] || "Profile-only discovery. Hub does not execute paid, credentialed, account-changing, or high-risk operations for this user-published service.",
+    links,
+  };
+}
+
+function buildProfileDescription(args, skills) {
+  const base = String(args.description || "").trim();
+  const publication = buildServicePublication(args, skills);
+  if (!publication) return base;
+
+  const lines = [];
+  if (base) lines.push(base, "");
+  lines.push("ClawCrony lightweight service publication:");
+  addLine(lines, "Service", publication.serviceTitle);
+  addLine(lines, "Summary", publication.serviceSummary);
+  addLine(lines, "Category", publication.serviceCategory);
+  addLine(lines, "Service type", publication.serviceType);
+  addLine(lines, "Service family", publication.serviceFamily);
+  addLine(lines, "Tags", publication.serviceTags.join(", "));
+  addLine(lines, "Delivery", publication.delivery);
+  addLine(lines, "Pricing", publication.pricing);
+  addLine(lines, "Availability", publication.availability);
+  addLine(lines, "Risk boundary", publication.riskBoundary);
+  addLine(lines, "Web", publication.links.webUrl);
+  addLine(lines, "Skill page", publication.links.skillPageUrl);
+  addLine(lines, "Skill download", publication.links.skillDownloadUrl);
+  addLine(lines, "OpenAPI", publication.links.openapiUrl);
+  addLine(lines, "MCP", publication.links.mcpUrl);
+  addLine(lines, "Custom HTTP", publication.links.customHttpUrl);
+  addLine(lines, "A2A", publication.links.a2aUrl);
+  addLine(lines, "Documentation", publication.links.documentationUrl);
+  addLine(lines, "Contact", publication.links.contactUrl);
+  addLine(lines, "Terms", publication.links.termsUrl);
+  lines.push("Boundary: this is a public profile description, not a verified marketplace listing or Hub-executed paid service.");
+  return lines.join("\n");
+}
+
+function buildDescriptor(identity, args, skills, profileDescription) {
   const endpoints = dedupeEndpoints([
     endpoint("web", args["web-url"], { catalogOnly: true }),
     endpoint("skill-page", args["skill-page-url"], { catalogOnly: true }),
     endpoint("skill-download", args["skill-download-url"], { catalogOnly: true }),
+    endpoint("documentation", args["documentation-url"], { catalogOnly: true }),
     endpoint("openapi", args["openapi-url"]),
     endpoint("mcp", args["mcp-url"]),
     endpoint("custom-http", args["custom-http-url"]),
@@ -265,12 +358,12 @@ function buildDescriptor(identity, args, skills) {
       outputModes: splitList(args["output-modes"] || "text,application/json"),
       metadata: {
         client: VERSION,
-        catalogOnly: endpoints.every((item) => ["web", "skill-page", "skill-download"].includes(item.protocol)),
+        catalogOnly: endpoints.every((item) => ["web", "skill-page", "skill-download", "documentation"].includes(item.protocol)),
       },
     },
     metadata: {
       implementation: "clawcrony-connect",
-      description: args.description || "",
+      description: profileDescription,
     },
   };
 }
@@ -314,10 +407,12 @@ async function register(args) {
   const hub = hubUrl(args);
   const identity = loadOrCreateIdentity(args["client-id"]);
   const skills = splitList(requireText(args.skills, "skills is required"));
-  const descriptor = buildDescriptor(identity, args, skills);
+  const profileDescription = buildProfileDescription(args, skills);
+  const servicePublication = buildServicePublication(args, skills);
+  const descriptor = buildDescriptor(identity, args, skills, profileDescription);
   const payload = {
     name: requireText(args.name, "name is required"),
-    description: args.description || "",
+    description: profileDescription,
     skills,
     clientId: identity.clientId,
     publicKey: identity.publicKey,
@@ -347,6 +442,7 @@ async function register(args) {
     description: payload.description,
     skills,
     connectionDescriptor: descriptor,
+    servicePublication,
   };
   writeJson(REGISTRATION_FILE, registration);
 
