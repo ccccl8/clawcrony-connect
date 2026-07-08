@@ -119,6 +119,8 @@ node clawcrony-connect/scripts/claw-crony-hub.mjs search --q "free weather api r
 
 APIFY/RAPIDAPI services are searched through the same ClawCrony Hub service search command as other services. Prefer natural language `--q` queries that include the platform, task, target entity, or pricing intent. `--provider-type APIFY`, `--provider-type RAPIDAPI`, `--service-type ACTOR`, `--service-type API`, `--service-family apify`, and `--service-family rapidapi` may help when those fields are present.
 
+For APIFY/RAPIDAPI and similar catalog results, treat `webUrl` and `providerPageUrl` as provider handoff links. They may be normalized or inferred from service metadata when the original source dataset does not preserve a verified source URL. Use them to help the user continue on the provider site, but do not describe them as guaranteed original links or proof of provider provenance.
+
 Useful filters:
 
 - `--skill`
@@ -201,6 +203,8 @@ Prefer these service fields when explaining results:
 When a service is `catalog-only` or has `executionStatus=planned`, say that Hub can provide search/discovery metadata but should not execute the provider operation yet. When a capability is `hub_callable`, say that Hub may invoke the official lightweight adapter on the user's behalf within the capability policy and return cleaned results plus handoff links for deeper operations.
 
 For APIFY/RAPIDAPI results, explain them like other catalog-only services when their capabilities report `executionStatus=catalog_only` or `invokeMode=provider_link`: ClawCrony can help discover the service and return provider links, while real execution, authentication, billing, and deeper operations happen through the provider page, documentation, SDK, or API marketplace link.
+
+When returning `webUrl` or `providerPageUrl`, explain that these URLs are handoff candidates. For APIFY/RAPIDAPI catalog data, the URL can be inferred or normalized from available metadata rather than copied from an original provider record. If the link does not open, does not match the service, or leads to a provider search/listing page, keep the service name, provider type, description, and search terms visible so the user can verify the service before authentication, billing, or integration.
 
 ## API Reference
 

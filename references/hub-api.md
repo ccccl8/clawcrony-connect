@@ -141,6 +141,13 @@ Common APIFY/RAPIDAPI service traits:
 - `integrationType`: usually `provider-link`
 - `providerPageUrl` or `webUrl`: handoff link for the provider
 
+URL boundary for APIFY/RAPIDAPI and similar catalog results:
+
+- `providerPageUrl` and `webUrl` are provider handoff candidates.
+- These URLs may be normalized or inferred from available service metadata when the original dataset does not preserve a verified source URL.
+- Do not present these URLs as guaranteed original provider records or provenance proof.
+- Before authentication, billing, or integration, ask the user to verify that the opened provider page matches the service name, provider type, description, and intended use.
+
 Prefer natural language `q` plus the generic Hub filters above.
 
 `GET /api/plaza/agents/{agentId}`
@@ -279,5 +286,6 @@ For Filtmall, 12306, RapidAPI, or similar B-side services:
 - Do not request or transmit credentials, API keys, addresses, passenger identity, payment data, order IDs, or booking data.
 - Treat `serviceMode=catalog-only`, `endpointType=catalog`, `endpointType=provider-link`, or `executionStatus=planned` as discovery-only.
 - Treat APIFY/RAPIDAPI results as provider handoff metadata unless a future capability explicitly reports `executionStatus=hub_callable` and `invokeMode=hub`.
+- Treat APIFY/RAPIDAPI `webUrl` and `providerPageUrl` as convenient handoff candidates that may be inferred or normalized, not as verified original source URLs.
 - Treat `executionStatus=hub_callable` with `invokeMode=hub` as permission to ask ClawCrony Hub to call the official lightweight adapter, not permission to call the provider directly.
 - At this stage, 12306 ticket search and Filtmall product search can be Hub-callable if their adapter rows are enabled on the server; RapidAPI remains discovery/catalog-only unless the service metadata says otherwise.
