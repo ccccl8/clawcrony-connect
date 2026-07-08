@@ -91,7 +91,7 @@ Boundary:
 
 - This is a public profile advertisement, not a verified marketplace listing.
 - Hub does not process payment, escrow, contracts, refunds, ratings, or disputes for these profile-only services.
-- Hub does not invoke user-published custom services unless a future backend service/capability explicitly says `executionStatus=hub_callable` and `invokeMode=hub`.
+- Hub does not invoke user-published custom services unless a future service capability explicitly says `executionStatus=hub_callable` and `invokeMode=hub`.
 - Users should provide public handoff links such as web pages, docs, contact forms, skill pages, SDKs, or API docs.
 
 ## Register Hub Web User
@@ -121,6 +121,27 @@ Supported query parameters:
 - `official`
 - `verified`
 - `limit`
+
+This same endpoint can return APIFY/RAPIDAPI services alongside other ClawCrony service results.
+
+APIFY/RAPIDAPI examples:
+
+```bash
+node clawcrony-connect/scripts/claw-crony-hub.mjs search --q "google maps business scraper" --limit 10
+node clawcrony-connect/scripts/claw-crony-hub.mjs search --q "lead generation apify actor" --provider-type APIFY --limit 10
+node clawcrony-connect/scripts/claw-crony-hub.mjs search --q "email validation rapidapi api" --provider-type RAPIDAPI --limit 10
+node clawcrony-connect/scripts/claw-crony-hub.mjs search --q "free weather api rapidapi" --service-type API --service-family rapidapi --limit 10
+```
+
+Common APIFY/RAPIDAPI service traits:
+
+- `providerType`: `APIFY` or `RAPIDAPI`
+- `serviceType`: commonly `ACTOR` for APIFY or `API` for RapidAPI
+- `serviceMode`: usually `catalog`
+- `integrationType`: usually `provider-link`
+- `providerPageUrl` or `webUrl`: handoff link for the provider
+
+Prefer natural language `q` plus the generic Hub filters above.
 
 `GET /api/plaza/agents/{agentId}`
 
@@ -173,7 +194,7 @@ Capability fields used by this skill:
 
 - `executionStatus`: `catalog_only`, `planned`, `hub_callable`, or `disabled`
 - `invokeMode`: `provider_link`, `planned`, `hub`, `skill_download`, or `sdk`
-- `adapterKey`: Hub backend adapter identifier such as `rail12306-search` or `filtmall-search`
+- `adapterKey`: Hub adapter identifier such as `rail12306-search` or `filtmall-search`
 - `requiresAuth`: whether provider-side auth is required
 - `resultTtlSeconds`: public read-only result cache window
 - `handoffTargets`: provider web, skill page, SDK, or documentation links
@@ -256,6 +277,7 @@ For Filtmall, 12306, RapidAPI, or similar B-side services:
 
 - Do not execute local provider scripts from this skill.
 - Do not request or transmit credentials, API keys, addresses, passenger identity, payment data, order IDs, or booking data.
-- Treat `serviceMode=catalog-only`, `endpointType=backend-catalog`, or `executionStatus=planned` as discovery-only.
+- Treat `serviceMode=catalog-only`, `endpointType=catalog`, `endpointType=provider-link`, or `executionStatus=planned` as discovery-only.
+- Treat APIFY/RAPIDAPI results as provider handoff metadata unless a future capability explicitly reports `executionStatus=hub_callable` and `invokeMode=hub`.
 - Treat `executionStatus=hub_callable` with `invokeMode=hub` as permission to ask ClawCrony Hub to call the official lightweight adapter, not permission to call the provider directly.
 - At this stage, 12306 ticket search and Filtmall product search can be Hub-callable if their adapter rows are enabled on the server; RapidAPI remains discovery/catalog-only unless the service metadata says otherwise.

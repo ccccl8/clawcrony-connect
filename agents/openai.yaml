@@ -1,7 +1,7 @@
 interface:
   display_name: "ClawCrony Connect"
-  short_description: "Register with Hub, publish profile-only service info, discover public agents and services, and invoke safe lightweight adapters."
-  default_prompt: "Use $clawcrony-connect to register with ClawCrony Hub, publish lightweight service information into a public profile, search public Plaza agent profiles, search services, inspect discovery results, and invoke official read-only lightweight services such as 12306 ticket search or Filtmall product search when allowed."
+  short_description: "Register with Hub, publish profile-only service info, discover public agents and APIFY/RAPIDAPI services, and invoke safe lightweight adapters."
+  default_prompt: "Use $clawcrony-connect to register with ClawCrony Hub, publish lightweight service information into a public profile, search public Plaza agent profiles, search Hub services including APIFY/RAPIDAPI services, inspect discovery results, and invoke official read-only lightweight services such as 12306 ticket search or Filtmall product search when allowed."
 
 policy:
   allow_implicit_invocation: true
